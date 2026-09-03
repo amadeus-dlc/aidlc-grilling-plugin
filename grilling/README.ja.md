@@ -21,13 +21,13 @@
 
 - **Grill me** — Interview me one question at a time with a recommended answer; drill into every branch until we share the same understanding
 
-Claude Code では4つのラベルが `AskUserQuestion` にちょうど収まり、組み込みの Other が逃げ道として残ります。番号付きプローズのハーネス（Kiro CLI、Kiro IDE、Cursor、opencode、Copilot、Codex のフォールバック）では Grill me が `4` 行目、合成される Other が `5` 行目に繰り下がります。annex の pre-send invariant はそのまま満たされます。
+表示は各ハーネスの question-rendering annex の担当で、フラグメントは選択肢を足すだけです。結果として Claude Code では4つのラベルが `AskUserQuestion` にちょうど収まり、組み込みの Other が逃げ道になります。番号付きプローズのハーネス（Kiro CLI、Kiro IDE、Cursor、opencode、Copilot、Codex のフォールバック）では annex の番号付け invariant により、Grill me の次の `5` 行目に Other が来ます。
 
 選ばれると **Step 3d** が走ります。Guide me のバッチサイズ1版に、毎問の推奨回答と依存順の深掘りを足したもので、帳簿は Guide me と同一です。
 
 1. 質問を依存関係順に並べ、1ターン1問で出す。推奨選択肢を先頭に置き "(Recommended)" を付ける
 2. 事実（既存コード、過去ステージの成果物、設定）は自分で調べ、決定だけを人間に委ねる
-3. 毎問 `aidlc-log.ts decision` / `answer` で記録し、`[Answer]:` に `**Mode:** grill` 付きで書き戻し、毎回新しい `date -u` を取る
+3. 毎問、ステージプロトコル自身の記録ペアと Question interaction log に従って記録し、回答を `[Answer]:` に書き戻して直下の行に `**Mode:** grill` を置く
 4. 派生した質問は、ターンを終える前に空の `[Answer]:` 付きで質問ファイルへ追記する（forwarding-loop の Stop フックが「人待ち」と判定できるように）
 5. 全問埋まったら Step 3a に合流する。consolidated summary → `aidlc-review-brief.ts summary` → Looks correct / Request changes
 
@@ -118,6 +118,7 @@ grilling/
 ## 制約
 
 - プロンプトレベルの追加です。ステージプロトコル本文は3択のままで、フラグメントは Grill me を「それに加えて」出すよう指示しています
+- フラグメントが決めるのは選択肢とインタビューの手順だけです。質問の表示方法と記録方法は本体のプロトコルと各ハーネスの annex の管轄で、フラグメントはコマンドや行番号を書き直さず、それらを参照します
 - Claude Code の `AskUserQuestion` は選択肢4つまでなので、Grill me で枠が埋まります。同じ方法で5つ目のモードは足せません
 - Grill me は Chat の置き換えではありません。質問ファイル駆動で毎問の帳簿を取る点が Chat と違います
 - `**Mode:** grill` は記録上の印で、`Mode` の値を検証するコアツールはありません

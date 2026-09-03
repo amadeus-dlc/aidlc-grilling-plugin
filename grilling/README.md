@@ -30,11 +30,12 @@ fragment adds a fourth option after the protocol's three:
 
 - **Grill me** — Interview me one question at a time with a recommended answer; drill into every branch until we share the same understanding
 
-On Claude Code the four labels fill `AskUserQuestion` exactly and its built-in
-Other stays the escape. On the numbered-prose harnesses (Kiro CLI, Kiro IDE,
-Cursor, opencode, Copilot, and the Codex fallback) Grill me is line `4` and the
-synthesized Other moves to line `5`, which still satisfies the annex's pre-send
-invariant.
+Rendering stays with each harness's question-rendering annex; the fragment adds
+the option and nothing else. In practice the four labels fill Claude Code's
+`AskUserQuestion` with its built-in Other as the escape, and on the
+numbered-prose harnesses (Kiro CLI, Kiro IDE, Cursor, opencode, Copilot, and the
+Codex fallback) the annex's numbering invariant puts Other on line `5` after
+Grill me.
 
 Choosing it runs **Step 3d** — Guide me with a batch size of one, a recommended
 answer on every question, and dependency-ordered follow-ups. The bookkeeping is
@@ -44,9 +45,9 @@ identical to Guide me:
    recommended option is listed first with "(Recommended)".
 2. Facts (existing code, prior artifacts, configuration) are looked up, not
    asked; only decisions go to the human.
-3. Every question is logged with `aidlc-log.ts decision` / `answer`, written
-   back to its `[Answer]:` tag with `**Mode:** grill`, and given a fresh
-   `date -u` timestamp.
+3. Every question goes through the stage protocol's own logging pair and
+   Question interaction log entry; the answer is written back to its
+   `[Answer]:` tag with `**Mode:** grill` on the line beneath.
 4. Follow-up questions are appended to the questions file with a blank
    `[Answer]:` tag before the turn ends, so the forwarding-loop Stop hook sees a
    pending human-wait.
@@ -166,6 +167,10 @@ grilling/
 
 - This is a prompt-level addition. The stage protocol itself still lists three
   modes; the fragment states that Grill me is offered *in addition* to them.
+- The fragment defines only the option and the interview procedure. How a
+  question is rendered and how it is logged remain the core protocol's and the
+  harness annexes' business; the fragment refers to them instead of restating
+  commands or numbering.
 - Claude Code's `AskUserQuestion` allows four options, so Grill me fills the
   last slot; a fifth mode cannot be added the same way.
 - Grill me does not replace Chat: it is questions-file driven and logs every
