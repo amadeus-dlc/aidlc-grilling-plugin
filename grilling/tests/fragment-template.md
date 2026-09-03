@@ -33,11 +33,13 @@ Guide me: the questions file stays the source of truth.
   instead of asking. Only decisions go to the human.
 - Before each question run `bun {{HARNESS_DIR}}/tools/aidlc-log.ts decision
   --stage <slug> --decision "<question>" --options "<csv>"`. After the answer,
-  immediately write it to that question's `[Answer]:` tag with `**Mode:** grill`,
-  run `bun {{HARNESS_DIR}}/tools/aidlc-log.ts answer --stage <slug> --details
-  "<exact choice>"`, and append a Question interaction log entry. Add `--unit`
-  or `--single` exactly as the protocol requires for this stage's identity. Take
-  a fresh `date -u` timestamp for every question; never reuse one.
+  immediately write the chosen option to that question's `[Answer]:` tag and
+  put `**Mode:** grill` on its own line directly beneath the tag (never inside
+  the answer value), run `bun {{HARNESS_DIR}}/tools/aidlc-log.ts answer --stage
+  <slug> --details "<exact choice>"`, and append a Question interaction log
+  entry. Add `--unit` or `--single` exactly as the protocol requires for this
+  stage's identity. Take a fresh `date -u` timestamp for every question; never
+  reuse one.
 - When an answer opens a new branch, append the follow-up question to the
   questions file with a blank `[Answer]:` tag **before ending the turn**, then
   present it as the next question. The forwarding-loop Stop hook needs that

@@ -59,6 +59,8 @@ contribution は**有効なプラグイン**にしかマージされません。
 
 ワークフローを開始して `intent-capture` まで進めます。回答モードの質問に4択と Other が出ること、**Grill me** を選ぶと推奨回答付きで1問ずつ出ること、毎問の後に質問ファイルと audit shard が更新されること、最後に consolidated summary の確認が出ることを見ます。番号付きプローズのハーネスでは Other が `5` 行目であることも確認します。
 
+Claude Code ではこの確認を自動化しています。`bun run test:live` が Claude Agent SDK 経由で本物のセッションを走らせ、`AskUserQuestion` 呼び出しそのものを検証します（`tests/README.md` 参照）。実施記録はリポジトリの `docs/` にあります。
+
 ## アンカー
 
 各 contribution は、質問を生成するステップの直後、または回答を集めるステップの直前にフラグメントを差し込みます。`after-questions` は compose が未実装なので使いません。表の正本は `scripts/sync-contributions.ts` の `TARGETS` 定数で、テストが各アンカーの `### Step N` 見出しが core に実在することを検証します。
@@ -88,9 +90,10 @@ bunx tsc --noEmit
 bun scripts/sync-contributions.ts             # テンプレート編集後に28本を再生成
 bun scripts/sync-contributions.ts --check     # drift ガード（テストからも実行される）
 bun ../aidlc-workflows/core/tools/aidlc-plugin-test.ts . --install ../grilling-sandbox --harness claude
+bun run test:live                             # opt-in: Agent SDK 経由で本物の Claude セッションを走らせる（tests/README.md 参照）
 ```
 
-最後のコマンドには compose 先となる使い捨ての AI-DLC install が必要です。checkout 同梱の配布物から作ります（gitignore 済み）。
+compose ゲートのコマンドには compose 先となる使い捨ての AI-DLC install が必要です。checkout 同梱の配布物から作ります（gitignore 済み）。
 
 ```bash
 mkdir -p ../grilling-sandbox && cp -R ../aidlc-workflows/dist/claude/. ../grilling-sandbox/
@@ -107,7 +110,9 @@ grilling/
 ├── scripts/sync-contributions.ts      # 生成器 + アンカー表 + --check
 └── tests/
     ├── fragment-template.md           # 手で編集する唯一のフラグメント本文
-    └── plugin.test.ts
+    ├── plugin.test.ts                 # content・projection・compose・同梱ゲート
+    ├── live-claude.test.ts            # opt-in: Agent SDK 経由のライブ Claude 実行
+    └── harness/sdk-drive.ts           # aidlc-workflows からコピーした SDK ドライバ（改変 3 点）
 ```
 
 ## 制約
