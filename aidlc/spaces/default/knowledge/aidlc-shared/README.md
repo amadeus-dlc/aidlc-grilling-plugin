@@ -10,6 +10,7 @@
 |---|---|---|
 | `domain-modeling.md` | Tell-Don't-Ask 全数反転で確立したドメインモデリングの型——commandable class・ドメインプリミティブ・不変条件としての検査・published language とアーキテクチャゲート。`grilling/src/` を DDD のマルチパッケージ構成で組むときの型 | architect / developer / architecture-reviewer |
 | `aidlc-engine-operations.md` | エンジン（aidlc-workflows）とシェル（`.claude/`）の更新手順、プラグインの再 compose、検証の正しい信号、実サンドボックス実射の型 | delivery / developer / pipeline-deploy |
+| `src-layout.md` | deep-spec-analysis の `src/` から整理した構成の型——コンテキスト × 層の workspace パッケージ、依存方向の強制（isolated linker・sanctioned edges）、各層の住人、`tools/` を生成物にする出荷、19 のアーキテクチャ規則。`grilling/src/` を設計するときの参照 | architect / developer / architecture-reviewer |
 
 このリポジトリ固有の実測記録:
 
