@@ -30,6 +30,21 @@ stage sources, and the per-harness `dist/` installs. Set
 - **Shipped gate** — `aidlc-plugin-test.ts . --install <temp Claude install>
   --harness claude` exits 0 (validate, build, compose, graph recompile,
   idempotency, drop scan).
+- **Live Claude harness** (`live-claude.test.ts`, opt-in with
+  `AIDLC_CLAUDE_SDK_LIVE=1`, or `bun run test:live`) — composes the plugin
+  into a disposable copy of `dist/claude`, switches the shipped Bedrock default
+  off in that copy's `settings.local.json`, and drives `/aidlc --scope feature …`
+  through the Claude Agent SDK with `harness/sdk-drive.ts` (copied from the
+  framework's test harness; see its header for the three local changes). The
+  SDK's `canUseTool` receives the real `AskUserQuestion` calls, so the test
+  asserts on the structured options: menu 1 is Guide me / I'll edit the file /
+  Chat / Grill me with the description verbatim; after answering Grill me,
+  menus 2 and 3 each carry one question with the "(Recommended)" option first;
+  the questions file holds `**Mode:** grill` and the audit shard the 4-option
+  `DECISION_RECORDED` plus the `QUESTION_ANSWERED` for Grill me. Uses the
+  developer's own Claude Code login (`CLAUDE_CONFIG_DIR` is forwarded) and the
+  `sonnet` model unless `GRILLING_LIVE_MODEL` says otherwise; expect a few
+  minutes and a few dollars per run. `AIDLC_KEEP_TEMP=1` keeps the workspace.
 
 `fragment-template.md` is the only hand-edited source of the fragment prose;
 it lives here because `tests/` is never composed into an install.
