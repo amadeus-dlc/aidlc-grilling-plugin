@@ -36,7 +36,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { PLUGIN, pluginRoot } from "../scripts/sync-contributions.ts";
 import { driveAidlc, type DriveResult } from "./harness/sdk-drive.ts";
 
@@ -207,7 +207,11 @@ describe.skipIf(!LIVE)("grilling — live Claude Code harness (AIDLC_CLAUDE_SDK_
     expect(/^\[Answer\]: \S/m.test(questions)).toBe(true);
     expect(/\*\*Mode:\*\* grill/.test(questions)).toBe(true);
 
-    const audit = walk(intents, (p) => /\/audit\/[^/]+\.md$/.test(p)).map((p) => readFileSync(p, "utf-8")).join("\n");
+    // Audit shards live at <record>/audit/<host>-<clone>.md; match on path
+    // segments, not on a separator, so the lookup also works on Windows.
+    const audit = walk(intents, (p) => basename(dirname(p)) === "audit" && p.endsWith(".md"))
+      .map((p) => readFileSync(p, "utf-8"))
+      .join("\n");
     expect(audit).toContain(`**Options**: ${MODE_LABELS.join(",")}`);
     expect(audit).toMatch(/\*\*Event\*\*: QUESTION_ANSWERED[\s\S]*?\*\*Details\*\*: Grill me/);
     // One DECISION_RECORDED per menu: the mode choice plus each interview question.
