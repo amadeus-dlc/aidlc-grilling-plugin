@@ -10,6 +10,13 @@
 //   - processEnv() drops the nested-session markers Claude Code sets in its own
 //     shell (CLAUDECODE, CLAUDE_CODE_* session/messaging vars, CLAUDE_PID), so
 //     the live test can be launched from inside a Claude Code session.
+//   - stopAfterAskUserQuestionAt counts CAPTURED menus (canUseTool invocations)
+//     rather than AskUserQuestion tool_use blocks in the assistant stream. The
+//     two diverge when the model's first attempt is rejected by input validation
+//     (e.g. more than four options) before canUseTool fires: upstream then
+//     stopped one menu early, right after the Nth-1 answer and before its
+//     write-back. The stop id is taken from permissionOptions.toolUseID inside
+//     canUseTool, so it always names the menu the test actually captured.
 //
 // One reusable module that collapses the three proven spike probes
 // (tools/aidlc-sdk-probe.ts, aidlc-sdk-workflow-probe.ts,
@@ -562,6 +569,12 @@ export async function driveAidlc(
               answers,
             });
             opts.onAskUserQuestion?.(captured);
+            if (
+              askMenuIndex === stopAfterAskUserQuestionAt &&
+              stopAfterAskUserQuestionToolUseId === undefined
+            ) {
+              stopAfterAskUserQuestionToolUseId = permissionOptions.toolUseID;
+            }
             if (askMenuIndex === stopAfterAskUserQuestionAt) {
               // Record the INTENT to stop, but do NOT abort here. Aborting inside
               // canUseTool tears down the SDK permission transport before this
@@ -609,17 +622,10 @@ export async function driveAidlc(
                 name: typeof block.name === "string" ? block.name : "",
                 input: block.input && typeof block.input === "object" ? block.input : {},
               });
-              if (
-                block.name === "AskUserQuestion"
-              ) {
+              if (block.name === "AskUserQuestion") {
+                // Counted for the trace only; the stop id is assigned in
+                // canUseTool (see the header note on captured menus).
                 askUserQuestionToolUseIndex++;
-                if (
-                  askUserQuestionToolUseIndex ===
-                    stopAfterAskUserQuestionAt &&
-                  stopAfterAskUserQuestionToolUseId === undefined
-                ) {
-                  stopAfterAskUserQuestionToolUseId = block.id;
-                }
               }
               pendingTools.set(block.id, {
                 toolName: typeof block.name === "string" ? block.name : "",
