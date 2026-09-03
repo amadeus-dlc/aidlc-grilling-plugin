@@ -1,4 +1,4 @@
-<!-- Copied on 2026-09-03 from amadeus-dlc/aidlc-deep-spec-analysis-plugin: aidlc/spaces/default/knowledge/aidlc-shared/aidlc-engine-operations.md. Examples and commands refer to that repository; the patterns apply here as-is. -->
+<!-- Copied on 2026-09-03 from amadeus-dlc/aidlc-deep-spec-analysis-plugin: aidlc/spaces/default/knowledge/aidlc-shared/aidlc-engine-operations.md. Examples and commands (installer, file counts, sensor names) refer to that repository. Adapted for this repository in three places: the engine checkout is pinned to a tag/commit instead of origin/main (§1), the shell update overwrites upstream-managed files instead of deleting .claude/ first (§1), and the live-fire step of the verification matrix points at this repository's own procedure (§6). -->
 
 # エンジンとシェルの更新、プラグインの再 compose
 
@@ -8,8 +8,8 @@ aidlc-workflows（submodule）とこのリポジトリの `.claude/`（シェル
 
 | 層 | 実体 | 更新のしかた |
 |---|---|---|
-| エンジン（開発時） | `aidlc-workflows/` submodule | `git -C aidlc-workflows checkout --detach origin/main` → 親で commit。CI の validate／build ツールチェーンはここから来る |
-| シェル（このリポジトリの `.claude/`） | `dist/claude/.claude` のコピー | `rm -rf .claude && cp -R aidlc-workflows/dist/claude/.claude .claude` → ローカル固有分を戻す |
+| エンジン（開発時） | `aidlc-workflows/` submodule | `git -C aidlc-workflows fetch --tags` → `git -C aidlc-workflows checkout --detach <対象のタグまたはコミット>`（例: `v2.7.1`。`origin/main` のような可変参照は使わない）→ 親リポジトリで submodule の gitlink を commit する。CI の validate／build ツールチェーンはここから来る |
+| シェル（このリポジトリの `.claude/`） | `dist/claude/.claude` のコピー | `cp -a .claude .claude.bak` で退避してから `cp -R aidlc-workflows/dist/claude/.claude/. .claude/` で **上書きのみ**（`.claude/` を先に消さない。`settings.local.json` やリポジトリ固有のセンサーなど、dist に無いローカル専用ファイルはそのまま残る）→ `diff -rq .claude .claude.bak` で差分が upstream の差分と一致することを確認。upstream 側で削除されたファイルは上書きでは消えないので、`git -C aidlc-workflows diff <旧> <新> --name-status -- dist/claude/.claude` の D 行を見て手で消す |
 | インストール先（サンドボックスや利用プロジェクト） | `dist/claude/` の上書き ＋ プラグイン再 compose | 公式手順（下記 3） |
 
 ## 2. シェル更新で保全するもの（このリポジトリの場合）
@@ -47,7 +47,7 @@ aidlc-workflows（submodule）とこのリポジトリの `.claude/`（シェル
 ## 6. 検証マトリクス（submodule を上げたときの最小）
 
 1. `bun install --frozen-lockfile` → `bunx tsc --noEmit` → `bun test --coverage` → `aidlc-plugin-validate` → 7 ハーネス build（CI と同じ）。`tests/intent-e2e.test.ts` は `dist/claude` をバニラ導入した一時 sandbox で installer・センサー・doctor・`--single` を実走するので、新エンジンとの結合はここで通る
-2. 実サンドボックスへの後入れアップグレード（上記 3）と実射（`formal-verification-ops.md` §5）
+2. 実サンドボックスへの後入れアップグレード（上記 3）と実射。このリポジトリでの実射は `bun run test:live`（`grilling/tests/live-claude.test.ts`。Agent SDK 経由で `/aidlc` を走らせ `AskUserQuestion` を検証する）で、手順と記録は `docs/live-check-2026-09-03.md`。（deep-spec-analysis では `formal-verification-ops.md` §5 が相当するが、その文書はこのリポジトリには持ち込んでいない）
 3. CI の flake に注意: bun の hook 既定予算は 5 秒で、engine プロセスを spawn する `beforeAll` は明示のタイムアウトを持つ（`{ timeout: 300_000 }`）
 
 ## 7. その他の運用メモ
