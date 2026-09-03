@@ -95,6 +95,11 @@ at a time with a recommended answer, the questions file and the audit shard
 update after every answer, and the consolidated-summary confirmation appears
 at the end. On a numbered-prose harness, confirm that Other is line `5`.
 
+On Claude Code this check is automated: `bun run test:live` drives a real
+session through the Claude Agent SDK and asserts on the `AskUserQuestion`
+calls themselves (see `tests/README.md`). The recorded runs live in the
+repository's `docs/`.
+
 ## Anchors
 
 Each contribution splices the fragment right after the step that generates
@@ -129,9 +134,10 @@ bunx tsc --noEmit
 bun scripts/sync-contributions.ts             # regenerate the 28 files after editing the template
 bun scripts/sync-contributions.ts --check     # drift guard (also run by the tests)
 bun ../aidlc-workflows/core/tools/aidlc-plugin-test.ts . --install ../grilling-sandbox --harness claude
+bun run test:live                             # opt-in: drive a real Claude session through the Agent SDK (see tests/README.md)
 ```
 
-The last command needs a disposable AI-DLC install to compose against; create
+The compose-tier command needs a disposable AI-DLC install to compose against; create
 it from the checkout's shipped distribution (it is gitignored):
 
 ```bash
@@ -151,7 +157,9 @@ grilling/
 ├── scripts/sync-contributions.ts      # generator + anchor table + --check
 └── tests/
     ├── fragment-template.md           # the only hand-edited fragment prose
-    └── plugin.test.ts
+    ├── plugin.test.ts                 # content, projections, compose, shipped gate
+    ├── live-claude.test.ts            # opt-in live Claude run through the Agent SDK
+    └── harness/sdk-drive.ts           # SDK driver copied from aidlc-workflows (3 local changes)
 ```
 
 ## Limits
