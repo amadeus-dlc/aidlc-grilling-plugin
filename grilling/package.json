@@ -1,0 +1,15 @@
+{
+  "name": "grilling-plugin-dev",
+  "private": true,
+  "description": "Dev-only harness for the grilling AIDLC plugin: bun types and tsc for the tests and the contribution generator. Nothing here ships — plugin projections carry only contributions/.",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit",
+    "sync": "bun scripts/sync-contributions.ts",
+    "check": "bun scripts/sync-contributions.ts --check"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "typescript": "7.0.2"
+  }
+}

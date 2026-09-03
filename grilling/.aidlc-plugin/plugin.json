@@ -1,18 +1,16 @@
 {
   "name": "grilling",
   "version": "0.1.0",
-  "description": "TODO: Describe what this plugin adds to AI-DLC.",
+  "description": "Adds a fourth \"Grill me\" interaction mode to the AI-DLC question flow: the orchestrator interviews you one question at a time, each with a recommended answer, and drills into every branch until you share the same understanding. Contributions only — no new stages, agents, scopes, or sensors.",
   "author": {
-    "name": "TODO: Your name or organization"
+    "name": "j5ik2o"
   },
   "dependencies": [
     "core"
   ],
   "aidlc": {
     "contributes": {
-      "stages": "stages/",
-      "agents": "agents/",
-      "scopes": "scopes/"
+      "overlays": "contributions/"
     }
   }
 }
