@@ -1,0 +1,15 @@
+{
+  "stage_slug": "code-generation",
+  "space": "default",
+  "intent": "260904-plugin-plan",
+  "selections": [
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "Loop-back 2（Build and Test から戻り）: サンドボックスで断片を変えた後の `install.ts --from` が `Changed 0` で合成を省く欠陥（provenance のダイジェストが contributions を数えない。参照先を写した際に contributions のみの plugin の性質を見落とした）。Step 20 として provenance のダイジェストに投影の contributions を含める修正とテストを入れる。人に再承認してもらう（4 回目の Plan Approval）",
+      "source": "orchestrator"
+    }
+  ]
+}

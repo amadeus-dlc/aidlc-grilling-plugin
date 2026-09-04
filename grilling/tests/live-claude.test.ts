@@ -10,10 +10,16 @@
 //
 //   menu 1  the interaction-mode question: Guide me / I'll edit the file /
 //           Chat / Grill me, with Grill me's description verbatim
-//   menu 2  after choosing Grill me: exactly one question, the recommended
-//           option first and marked "(Recommended)"
-//   menu 3  the next question, again alone and with a recommendation, asked
-//           only after menu 2's answer was written back with **Mode:** grill
+//   menu 2  after choosing Grill me: the first round — two to four independent
+//           questions on one screen, each with its recommended option first
+//           and marked "(Recommended)"
+//   menu 3  the next screen (the rest of round 1, or round 2): at most four
+//           questions, again recommended-first, asked only after menu 2's
+//           answers were written back with **Mode:** grill
+//
+// Whether the questions of one screen were really independent of each other
+// is not machine-checked here: a human reads the printed menus and records
+// the verdict in docs/live-check-<date>.md (BR10.5, BR10.7).
 //
 // Cost/time: roughly 5 minutes and a few dollars on the default `sonnet`
 // model (set GRILLING_LIVE_MODEL to override). Auth: the developer's own
@@ -46,7 +52,11 @@ const PROMPT =
   "/aidlc --scope feature Build a small command-line tool that prints a personalised greeting for a given name";
 const MODE_LABELS = ["Guide me", "I'll edit the file", "Chat", "Grill me"];
 const GRILL_ME_DESCRIPTION =
-  "Interview me one question at a time with a recommended answer; drill into every branch until we share the same understanding";
+  "Interview me in rounds of independent questions, each with a recommended answer; drill into every branch until we share the same understanding";
+// Claude Code renders at most four questions per AskUserQuestion call (C3);
+// the first round must put at least two on one screen (BR10.4).
+const MAX_QUESTIONS_PER_SCREEN = 4;
+const MIN_QUESTIONS_FIRST_ROUND = 2;
 const DRIVE_TIMEOUT_MS = 15 * 60_000;
 
 const checkout = (() => {
@@ -186,23 +196,39 @@ describe.skipIf(!LIVE)("grilling — live Claude Code harness (AIDLC_CLAUDE_SDK_
     expect(askResults[0].isError).toBe(false);
   });
 
-  test("menus 2 and 3 each ask one question with the recommended option first", () => {
-    for (const menu of result.askedQuestions.slice(1)) {
-      expect(menu.questions.length).toBe(1);
-      const q = menu.questions[0];
-      expect(q.options.length).toBeGreaterThanOrEqual(2);
+  // Every question on a screen leads with its recommended option, and the
+  // scripted answer took that option (BR2.2).
+  function expectRecommendedFirst(menu: DriveResult["askedQuestions"][number]): void {
+    for (const q of menu.questions) {
+      expect(q.options.length, `options of: ${q.question}`).toBeGreaterThanOrEqual(2);
       expect(q.options[0].label, `first option must be marked recommended: ${q.options[0].label}`).toMatch(/\(Recommended\)/);
       expect(menu.answers[q.question]).toBe(q.options[0].label);
     }
+  }
+
+  test("menu 2 asks the first round as one screen of two to four questions, each recommended first", () => {
+    const menu = result.askedQuestions[1];
+    expect(menu.questions.length, "a one-question first screen is the old one-at-a-time mode").toBeGreaterThanOrEqual(
+      MIN_QUESTIONS_FIRST_ROUND,
+    );
+    expect(menu.questions.length).toBeLessThanOrEqual(MAX_QUESTIONS_PER_SCREEN);
+    expectRecommendedFirst(menu);
   });
 
-  test("the mode choice and the first answer were logged and written back", () => {
+  test("menu 3 asks at most four questions, each recommended first", () => {
+    const menu = result.askedQuestions[2];
+    expect(menu.questions.length).toBeGreaterThanOrEqual(1);
+    expect(menu.questions.length).toBeLessThanOrEqual(MAX_QUESTIONS_PER_SCREEN);
+    expectRecommendedFirst(menu);
+  });
+
+  test("the mode choice and the first screen's answers were logged and written back", () => {
     const intents = join(project, "aidlc", "spaces", "default", "intents");
     const questionFiles = walk(intents, (p) => p.endsWith("intent-capture-questions.md"));
     expect(questionFiles.length).toBe(1);
     const questions = readFileSync(questionFiles[0], "utf-8");
-    // Menu 2's answer is written back, carrying the mode marker, before menu 3
-    // is asked. The marker's exact placement is model-authored formatting, so
+    // Menu 2's answers are written back, carrying the mode marker, before menu
+    // 3 is asked. The marker's exact placement is model-authored formatting, so
     // only its presence is asserted here; the fragment prescribes its own line.
     expect(/^\[Answer\]: \S/m.test(questions)).toBe(true);
     expect(/\*\*Mode:\*\* grill/.test(questions)).toBe(true);
@@ -214,7 +240,7 @@ describe.skipIf(!LIVE)("grilling — live Claude Code harness (AIDLC_CLAUDE_SDK_
       .join("\n");
     expect(audit).toContain(`**Options**: ${MODE_LABELS.join(",")}`);
     expect(audit).toMatch(/\*\*Event\*\*: QUESTION_ANSWERED[\s\S]*?\*\*Details\*\*: Grill me/);
-    // One DECISION_RECORDED per menu: the mode choice plus each interview question.
+    // One DECISION_RECORDED per screen: the mode choice plus each interview screen (BR5.3).
     expect((audit.match(/\*\*Event\*\*: DECISION_RECORDED/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 });

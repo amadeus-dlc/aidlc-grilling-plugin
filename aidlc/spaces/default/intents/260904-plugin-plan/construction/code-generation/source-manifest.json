@@ -1,0 +1,29 @@
+{
+  "stage": "code-generation",
+  "version": 1,
+  "writes": [
+    { "path": ".github/workflows/ci.yml" },
+    { "path": "README.md" },
+    { "path": "README.ja.md" },
+    { "path": "LICENSE" },
+    { "path": "mise.toml" },
+    { "path": "renovate.json" },
+    { "path": "docs/plugin-plan.md" },
+    { "path": "grilling/.aidlc-plugin/plugin.json" },
+    { "path": "grilling/README.md" },
+    { "path": "grilling/README.ja.md" },
+    { "path": "grilling/contributions/" },
+    { "path": "grilling/docs/decisions.md" },
+    { "path": "grilling/docs/decisions.ja.md" },
+    { "path": "grilling/scripts/install.ts" },
+    { "path": "grilling/scripts/release.ts" },
+    { "path": "grilling/tests/README.md" },
+    { "path": "grilling/tests/README.ja.md" },
+    { "path": "grilling/tests/fragment-template.md" },
+    { "path": "grilling/tests/plugin.test.ts" },
+    { "path": "grilling/tests/live-claude.test.ts" },
+    { "path": "grilling/tests/installer.test.ts" },
+    { "path": "grilling/tests/release.test.ts" },
+    { "path": "grilling/tests/select-plugins.test.ts" }
+  ]
+}

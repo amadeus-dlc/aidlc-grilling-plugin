@@ -1,0 +1,23 @@
+{
+  "stage_slug": "build-and-test",
+  "space": "default",
+  "intent": "260904-plugin-plan",
+  "selections": [
+    {
+      "candidate_id": "c2",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "人の指示「最終的にサンドボックスで検証」は、(a) `../grilling-sandbox`（リポジトリの隣）を `aidlc-workflows/dist/claude` から作り直して新しいインストーラで導入し、配布側の合成チェックと doctor を通す、(b) `bun run test:live` が自前で作る使い捨て install で Claude Code を実走する、の 2 つで満たすと解釈した。(b) のテストは install 先を外から差し替えられないため、同じ dist/claude から作った 2 つ目のサンドボックスになる",
+      "source": "orchestrator"
+    },
+    {
+      "candidate_id": "c6",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "0.2.0 の公開（`release.ts 0.2.0`）はこのステージでは実行しない。リリースツールの事前検査が `main` ブランチと clean な worktree を要求するため、今回の変更をコミットして PR をマージした後にしか実行できない。要求 FR5.4 は「マージ後の作業」として承認ゲートで明示する",
+      "source": "orchestrator"
+    }
+  ]
+}

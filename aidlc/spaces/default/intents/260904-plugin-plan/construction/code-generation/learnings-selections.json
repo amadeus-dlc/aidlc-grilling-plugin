@@ -1,0 +1,15 @@
+{
+  "stage_slug": "code-generation",
+  "space": "default",
+  "intent": "260904-plugin-plan",
+  "selections": [
+    {
+      "candidate_id": "c3",
+      "type": "learning",
+      "scope": "project",
+      "heading": "Corrections",
+      "text": "ステージ定義の Step 4「計画のチェックボックスを完了のたびに更新する」を、最初の依頼（Step 1〜7）の後は行わないことにした。承認ガード（aidlc-plan-approval-guard）は計画ファイルの bytes を指紋に含めるため、チェックを付けた瞬間に承認が失効し、以後のワークスペース書き込みが全部拒否される。Step 1〜7 のチェックで一度失効し、`next` で directive を出し直して人に再承認してもらった（PLAN_APPROVAL_BLOCKED 3 件が監査に残る）。以後の依頼では計画ファイルを触らず、完了ステップは返答で受け取り、最後に一括でチェックを付ける。ステージ定義とガードの不整合はフレームワーク側の課題として計画書の完了記録に転記する",
+      "source": "orchestrator"
+    }
+  ]
+}
