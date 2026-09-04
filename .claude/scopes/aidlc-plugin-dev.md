@@ -4,6 +4,7 @@ depth: Standard
 keywords: []
 description: AI-DLC v2 プラグイン開発 — contributions・manifest・tests を設計付きで作り、validate/build で検証する
 skeleton: off
+runner: true
 ---
 
 # plugin-dev scope
@@ -57,7 +58,8 @@ deployment 系を un-SKIP する。
 ## Membership
 
 Keyword triggers: なし（`keywords: []`）。推論では選ばれず、
-`/aidlc --scope plugin-dev` で明示指定する。Initialization 3 ステージに
+`/aidlc --scope plugin-dev` で明示指定するか、`/aidlc-plugin-dev` ランナーで
+起動する（`runner: true`）。Initialization 3 ステージに
 加えて `intent-capture`、`reverse-engineering`、`requirements-analysis`、
 `domain-design`、`functional-design`、`code-generation`、`build-and-test` が
 EXECUTE、残る 23 ステージは SKIP。`skeleton: off` — プラグインは既に
