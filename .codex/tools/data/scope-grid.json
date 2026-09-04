@@ -276,7 +276,7 @@
       "user-stories": "SKIP",
       "refined-mockups": "SKIP",
       "domain-design": "EXECUTE",
-      "units-generation": "SKIP",
+      "units-generation": "EXECUTE",
       "contract-design": "SKIP",
       "delivery-planning": "SKIP",
       "functional-design": "EXECUTE",

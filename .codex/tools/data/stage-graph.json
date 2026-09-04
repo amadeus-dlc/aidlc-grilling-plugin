@@ -1416,7 +1416,8 @@
       "feature",
       "mvp",
       "classic",
-      "workshop"
+      "workshop",
+      "plugin-dev"
     ],
     "reviewer": "aidlc-architecture-reviewer-agent",
     "review_artifact": "unit-of-work",
