@@ -88,9 +88,9 @@
 
 ## 公開版 v0.2.0 の導入確認（サンドボックス、14:46 UTC）
 
-PR #11 のマージ後に `bun grilling/scripts/release.ts 0.2.0` で `v0.2.0` を公開し、タグ push の CI（「Verify release tag matches plugin manifest」を含む）が通ったことを確かめたうえで、README の手順どおり raw URL からインストーラを取り、タグ指定で同じサンドボックスに導入した。
+PR #11 のマージ後に `bun grilling/scripts/release.ts 0.2.0` で `v0.2.0` を公開し、タグ push の CI（「Verify release tag matches plugin manifest」を含む）が通ったことを確かめたうえで、README の手順どおり raw URL からインストーラを取り、タグ指定で同じサンドボックスに導入した。タグ `v0.2.0` はコミット `27a84fb`（`chore(release): publish v0.2.0`）を指し、`git ls-remote --tags origin v0.2.0` で確認した。再現するときはタグの代わりにこのコミット SHA を URL に使ってもよい。
 
-```
+```sh
 curl -fsSL https://raw.githubusercontent.com/amadeus-dlc/aidlc-grilling-plugin/v0.2.0/grilling/scripts/install.ts \
   | bun - --project ../grilling-sandbox --tag v0.2.0 --harness claude
 ```
