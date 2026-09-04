@@ -85,3 +85,20 @@
 断片テンプレートを変えた後に `bun grilling/scripts/install.ts --project ../grilling-sandbox --from <repo-root>` を再実行すると `Changed 0` と表示して合成を省き、サンドボックスは旧断片のままになる。インストーラの「変更なし」判定が provenance の `payload_sha256`（sensors / tools などのペイロード）だけを比べ、contributions を数えていないため。grilling は contributions しか持たないので、ダイジェストは常に空列のものになる。compose hook（`hooks/compose.ts`）自体は内容ベースで置き換えるので、直接実行すれば 28 ステージが新しい断片になった。
 
 対処（Loop-back 2）: `install.ts` の provenance に記録するダイジェストを「投影のペイロードファイル＋ `contributions/**`」に広げ、導入先のファイルとの一致判定は従来どおりペイロードのファイルだけにした。修正後にサンドボックスで再実行すると、1 回目は `Changed 1`（provenance が `sha256:e3b0c4…` から `sha256:ef5956…` に更新され、28 ステージが新しい断片に）、2 回目は `Changed 0`。`grilling/tests/installer.test.ts` に「断片を変えて再実行すると合成し直し、さらにもう 1 回は `Changed 0`」を追加した。エンジンの再インストールで合成が消えた場合は provenance も候補も変わらないため検出できず、`/aidlc plugin sync` の再実行が要る（README に明記）。
+
+## 公開版 v0.2.0 の導入確認（サンドボックス、14:46 UTC）
+
+PR #11 のマージ後に `bun grilling/scripts/release.ts 0.2.0` で `v0.2.0` を公開し、タグ push の CI（「Verify release tag matches plugin manifest」を含む）が通ったことを確かめたうえで、README の手順どおり raw URL からインストーラを取り、タグ指定で同じサンドボックスに導入した。
+
+```
+curl -fsSL https://raw.githubusercontent.com/amadeus-dlc/aidlc-grilling-plugin/v0.2.0/grilling/scripts/install.ts \
+  | bun - --project ../grilling-sandbox --tag v0.2.0 --harness claude
+```
+
+| 回 | 結果 |
+|---|---|
+| dry run | `Changed files (29)`（28 ステージ + `plugin-contrib-grilling.json`）、`Drops: 0`、`Idempotent second compose: true`、`✓ dry run passed` |
+| 1 回目 | `Changed 1 — recorded 0.2.0 from tag v0.2.0` |
+| 2 回目 | `Changed 0 — tag v0.2.0 is already installed` |
+
+provenance（`.claude/tools/data/grilling-install.json`）は `version: 0.2.0`、`ref: v0.2.0`、`source: tag`、`payload_sha256: sha256:4018da…`。28 ステージすべてに公開版の断片（Loop-back 1 と Bugbot 指摘の反映後の文面）が入っていることを、断片固有の文で数えて確認した。
