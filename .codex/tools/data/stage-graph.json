@@ -24,7 +24,8 @@
       "security-patch",
       "classic",
       "workshop",
-      "express"
+      "express",
+      "plugin-dev"
     ],
     "inputs": "none (first stage after session start)",
     "outputs": "the per-intent record tree (one dir per in-scope phase + verification dir) and the space-level knowledge/ dir",
@@ -71,7 +72,8 @@
       "security-patch",
       "classic",
       "workshop",
-      "express"
+      "express",
+      "plugin-dev"
     ],
     "inputs": "none (scans filesystem)",
     "outputs": "workspace classification (greenfield/brownfield), technology stack detection",
@@ -118,7 +120,8 @@
       "security-patch",
       "classic",
       "workshop",
-      "express"
+      "express",
+      "plugin-dev"
     ],
     "inputs": "workspace classification from workspace-detection, scope from orchestrator",
     "outputs": "<record>/aidlc-state.md (full populated version, engine-resolved)",
