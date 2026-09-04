@@ -6,6 +6,12 @@ on:
     tags: ["v*"]
   pull_request:
 
+# Least privilege: CI only reads. review-thread-resolution is the one job that
+# takes checks / statuses write, and it takes them per job (after
+# amadeus-dlc/amadeus-ng's ci.yml).
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -19,6 +25,11 @@ jobs:
           # aidlc-workflows supplies the validate/build/compose toolchain and the
           # dist/<harness> installs the compose tests run against
           submodules: true
+          # This job runs the PR's own code (bun install postinstall, the tests,
+          # the generator), so the GITHUB_TOKEN must not be left in .git/config.
+          # The submodule is a public HTTPS URL (.gitmodules), so the git
+          # operations that follow need no credentials.
+          persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -50,3 +61,99 @@ jobs:
           for h in claude codex copilot cursor kiro kiro-ide opencode; do
             bun ../aidlc-workflows/core/tools/aidlc-plugin-build.ts . "$h"
           done
+
+  # Line coverage gate (amadeus-dlc/amadeus-ng's coverage job, ported to Bun).
+  # scripts/coverage.ts derives line coverage from the lcov `bun test --coverage`
+  # writes and judges an absolute gate (60% floor) plus, on pull_request, a
+  # relative gate against the base ref. What is measured, and what is excluded,
+  # is bunfig.toml's business.
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: grilling
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The relative gate checks the base ref out into a temporary worktree,
+          # which a shallow clone (the default) cannot serve. The submodule is
+          # needed in the base worktree too — the compose tests require it.
+          fetch-depth: 0
+          submodules: true
+          # scripts/coverage.ts is the PR's own code and runs bun install and
+          # bun test in the base worktree as well. Do not leave the GITHUB_TOKEN
+          # in .git/config; the submodule is a public HTTPS URL, so no
+          # credentials are needed.
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: Install pinned dev dependencies (bun types, tsc, Agent SDK)
+        run: bun install --frozen-lockfile
+
+      - name: Run coverage gate (pull_request — absolute + relative)
+        if: github.event_name == 'pull_request'
+        run: bun scripts/coverage.ts --base "origin/${{ github.base_ref }}"
+
+      # push (main / tag) has no base ref to compare against, so the absolute
+      # gate runs alone. The same change already cleared the relative gate on
+      # its pull_request.
+      - name: Run coverage gate (push — absolute only)
+        if: github.event_name != 'pull_request'
+        run: bun scripts/coverage.ts
+
+  # Review thread gate (after amadeus-dlc/amadeus-ng's ci.yml): a PR with
+  # unresolved review threads (bot comments, CodeRabbit's included) does not get
+  # "CI Success". Boilerplate such as a bot reporting that it hit its usage limit
+  # is ignored. Evaluated on pull_request only; skipped on push (CI Success
+  # accepts skipped there).
+  review-thread-resolution:
+    name: CI Review Thread Gate
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      checks: write
+      issues: read
+      pull-requests: read
+      statuses: write
+    uses: j5ik2o/ci/.github/workflows/review-thread-resolution.yml@9cf0e9a8cd74c72de704763025003ed3b7608c65
+    with:
+      wait_for_other_checks: "false"
+      base_branch: main
+      required_context: Check unresolved comments
+      extra_ignored_auto_report_author_patterns: "cursor\tBugbot couldn't run - usage limit reached"
+      ci_ref: 9cf0e9a8cd74c72de704763025003ed3b7608c65
+
+  # Aggregate job. Branch protection / the ruleset requires "CI Success".
+  # On pull_request it also requires review-thread-resolution to succeed; on push
+  # it requires that job to have been skipped.
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - ci
+      - coverage
+      - review-thread-resolution
+    if: ${{ always() }}
+    steps:
+      - name: All required checks passed
+        run: |
+          require_result() {
+            local name="$1" actual="$2"
+            if [[ "${actual}" != "success" ]]; then
+              echo "${name} was ${actual}; expected success"
+              exit 1
+            fi
+          }
+          require_result "ci" "${{ needs.ci.result }}"
+          require_result "coverage" "${{ needs.coverage.result }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            require_result "review-thread-resolution" "${{ needs['review-thread-resolution'].result }}"
+          elif [[ "${{ needs['review-thread-resolution'].result }}" != "skipped" ]]; then
+            echo "review-thread-resolution was ${{ needs['review-thread-resolution'].result }}; expected skipped"
+            exit 1
+          fi

@@ -1,0 +1,26 @@
+# Coverage measurement scope for `bun test --coverage`.
+#
+# This file is the single source of truth for WHAT is measured; the line
+# coverage FLOOR lives in scripts/coverage.ts (ABSOLUTE_THRESHOLD), so the
+# number is stated once. No `coverageThreshold` here on purpose: the CI `ci`
+# job runs a plain `bun test`, and a second copy of the floor would only drift.
+#
+# Measured: scripts/release.ts, scripts/sync-contributions.ts, and the gate
+# script itself. Excluded:
+#
+#   tests/**             Test code and its helpers. tests/harness/sdk-drive.ts
+#                        alone is 948 lines that only the live Claude suite
+#                        (AIDLC_CLAUDE_SDK_LIVE=1, skipped in CI) ever runs.
+#   scripts/install.ts   The installer is covered end to end, but through
+#                        `spawnSync("bun", [install.ts, ...])` in
+#                        tests/installer.test.ts. A child process never reaches
+#                        in-process coverage, so the file reports ~22% however
+#                        well it is tested. Leaving it in the denominator would
+#                        make every honest, e2e-covered addition to it look like
+#                        a coverage regression to the relative gate.
+[test]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "tests/**",
+  "scripts/install.ts",
+]
