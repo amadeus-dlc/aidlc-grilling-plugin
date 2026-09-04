@@ -166,7 +166,8 @@
       "enterprise",
       "feature",
       "mvp",
-      "poc"
+      "poc",
+      "plugin-dev"
     ],
     "reviewer": "aidlc-product-lead-agent",
     "review_artifact": "intent-statement",
@@ -787,7 +788,8 @@
       "security-patch",
       "classic",
       "workshop",
-      "express"
+      "express",
+      "plugin-dev"
     ],
     "inputs": "<record>/aidlc-state.md",
     "outputs": "aidlc/spaces/<active-space>/codekb/<repo>/ (9 artifacts: business-overview.md, architecture.md, code-structure.md, api-documentation.md, component-inventory.md, technology-stack.md, dependencies.md, code-quality-assessment.md, reverse-engineering-timestamp.md)",
@@ -998,7 +1000,8 @@
       "security-patch",
       "classic",
       "workshop",
-      "express"
+      "express",
+      "plugin-dev"
     ],
     "reviewer": "aidlc-product-lead-agent",
     "review_artifact": "requirements",
@@ -1306,7 +1309,8 @@
       "feature",
       "mvp",
       "classic",
-      "workshop"
+      "workshop",
+      "plugin-dev"
     ],
     "reviewer": "aidlc-architecture-reviewer-agent",
     "review_artifact": "components",
@@ -1753,7 +1757,8 @@
       "mvp",
       "refactor",
       "classic",
-      "workshop"
+      "workshop",
+      "plugin-dev"
     ],
     "reviewer": "aidlc-architecture-reviewer-agent",
     "review_artifact": "functional-spec",
@@ -2384,7 +2389,8 @@
       "security-patch",
       "classic",
       "workshop",
-      "express"
+      "express",
+      "plugin-dev"
     ],
     "reviewer": "aidlc-architecture-reviewer-agent",
     "review_artifact": "code-generation-plan",
@@ -2498,7 +2504,8 @@
       "security-patch",
       "classic",
       "workshop",
-      "express"
+      "express",
+      "plugin-dev"
     ],
     "inputs": "ALL code generation outputs across all units",
     "outputs": "build-instructions.md, integration-test-instructions.md, performance-test-instructions.md, security-test-instructions.md, build-and-test-summary.md, test-results.md, cross-unit-traceability.md (under this stage's record dir, engine-resolved)",
