@@ -194,12 +194,41 @@ describe("grilling — authored content", () => {
 
   test("the fragment template is well-formed prose", () => {
     expect(template.trim().length).toBeGreaterThan(0);
+    // The fourth mode: its label and the round-based description (BR2.5). The
+    // one-question-at-a-time description of the first release must be gone.
     expect(template).toContain("`Grill me`");
     expect(template).toContain(
-      "`Interview me one question at a time with a recommended answer; drill into every branch until we share the same understanding`",
+      "`Interview me in rounds of independent questions, each with a recommended answer; drill into every branch until we share the same understanding`",
+    );
+    expect(template).not.toContain(
+      "Interview me one question at a time with a recommended answer; drill into every branch until we share the same understanding",
     );
     expect(template).toContain('**Step 3d: If "Grill me"');
-    expect(template).toContain("**Mode:** grill");
+    // Fixed tokens the interview renders or writes into the questions file
+    // (entities.md > FragmentTemplate; BR2.2, BR3.2, BR5.2, BR5.4).
+    for (const token of [
+      "(Recommended)",
+      "**Mode:** grill",
+      "**Pending:**",
+      "Decided assumptions",
+      "[XL]",
+      "[SS]",
+      "❓",
+      "➡️",
+      "X. Other (please specify)",
+    ]) {
+      expect(template, `fixed token ${token}`).toContain(token);
+    }
+    // Rounds over a frontier (BR1), the one-question-at-a-time opt-out (BR6),
+    // and the five decision tiers mapped from Depth (BR7.1, BR7.2).
+    for (const word of ["frontier", "round", "one question at a time", "XL", "SS"]) {
+      expect(template, `rule vocabulary ${word}`).toContain(word);
+    }
+    expect(template).toMatch(/\|\s*Minimal\s*\|\s*XL, L\s*\|/);
+    expect(template).toMatch(/\|\s*Standard\s*\|\s*XL, L, M\s*\|/);
+    expect(template).toMatch(/\|\s*Comprehensive\s*\|\s*XL, L, M, S\s*\|/);
+    // Prompt budget: the same prose lands in all 28 stages (ADR-004, BR10.2).
+    expect(template.split("\n").length).toBeLessThanOrEqual(150);
     // Sentinel look-alikes would be mistaken for block terminators on upgrade.
     expect(/<!--\s*\/?plugin:/m.test(template)).toBe(false);
     // A nested fragment header would split the prose block.
