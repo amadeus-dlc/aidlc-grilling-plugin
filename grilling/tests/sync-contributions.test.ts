@@ -127,6 +127,16 @@ describe("sync-contributions — command line", () => {
     expect(clean.err).toEqual([]);
   });
 
+  test("a sync that throws is reported as an error, not raised past the caller", () => {
+    // A plugin root with no fragment template: sync cannot read its source.
+    const empty = mkdtempSync(join(tmpdir(), "grilling-sync-empty-"));
+    sandboxes.push(empty);
+    const failed = cli(["--check"], empty);
+    expect(failed.code).toBe(1);
+    expect(failed.err.join("\n")).toContain("sync-contributions:");
+    expect(failed.out).toEqual([]);
+  });
+
   test("without --check it writes and reports what changed", () => {
     const root = sandboxRoot();
     const written = cli([], root);

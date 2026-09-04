@@ -134,7 +134,15 @@ export function main(argv: readonly string[], deps: MainDeps = {}): 0 | 1 {
   const log = deps.log ?? ((line: string) => console.log(line));
   const error = deps.error ?? ((line: string) => console.error(line));
   const check = argv.includes("--check");
-  const { drift } = sync({ check, root: deps.root });
+  // sync reads the template and touches files; a failure there is the command's
+  // failure, reported like every other one rather than thrown past the caller.
+  let drift: string[];
+  try {
+    ({ drift } = sync({ check, root: deps.root }));
+  } catch (thrown) {
+    error(`sync-contributions: ${thrown instanceof Error ? thrown.message : String(thrown)}`);
+    return 1;
+  }
   if (check) {
     if (drift.length === 0) {
       log(`sync-contributions: ${TARGETS.length} contributions match the template`);
