@@ -197,7 +197,7 @@ describe("coverage gate — measurement", () => {
 
   /** Stands in for `bun test --coverage`: records the invocation and writes the
    *  lcov the real bun would write into the --coverage-dir it was handed. */
-  function fakeBun(options: { lcov?: string; summary?: string; error?: Error }): {
+  function fakeBun(options: { lcov?: string; summary?: string; status?: number; error?: Error }): {
     run: CommandRunner;
     calls: Array<{ command: string; args: readonly string[]; cwd: string }>;
     coverageDirs: string[];
@@ -212,7 +212,12 @@ describe("coverage gate — measurement", () => {
         coverageDirs.push(dir);
         if (options.lcov !== undefined) writeFileSync(join(dir, "lcov.info"), options.lcov);
       }
-      return { status: 0, stdout: options.summary ?? " 71 pass\n 14 skip\n 0 fail\n", stderr: "", error: options.error };
+      return {
+        status: options.status ?? 0,
+        stdout: options.summary ?? " 71 pass\n 14 skip\n 0 fail\n",
+        stderr: "",
+        error: options.error,
+      };
     };
     return { run, calls, coverageDirs };
   }
@@ -238,6 +243,15 @@ describe("coverage gate — measurement", () => {
   test("a red suite is an error, never a coverage number", () => {
     const red = fakeBun({ lcov: LCOV, summary: " 69 pass\n 2 fail\n" });
     expect(() => measureWithBun("/repo", red.run)).toThrow("2 test(s) failed");
+  });
+
+  test("a non-zero exit is an error even with no failure line and an lcov on disk", () => {
+    // A module that fails to load, an unhandled error between tests, or a killed
+    // process exits non-zero without ever printing "N fail", and bun may still
+    // have written an lcov for the part that ran.
+    const aborted = fakeBun({ lcov: LCOV, status: 1, summary: " 3 pass\n 0 fail\n" });
+    expect(() => measureWithBun("/repo", aborted.run)).toThrow("exited with status 1");
+    expect(existsSync(aborted.coverageDirs[0] as string)).toBe(false);
   });
 
   test("a bun that never started, a missing lcov, and an empty lcov are all errors", () => {

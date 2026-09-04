@@ -129,8 +129,8 @@ export function failedTestCount(output: string): number {
 }
 
 /** Run bun test in the given checkout's grilling/ and return line coverage %
- *  from the lcov it writes. A failing suite or a missing lcov throws — a red
- *  suite must never be reported as a coverage number. */
+ *  from the lcov it writes. Anything short of a clean run throws — a red suite
+ *  must never be reported as a coverage number. */
 export function measureWithBun(repoRoot: string, run: CommandRunner = defaultRunner): number {
   const packageDir = join(repoRoot, PACKAGE_DIR);
   const coverageDir = mkdtempSync(join(tmpdir(), "grilling-coverage-"));
@@ -143,6 +143,15 @@ export function measureWithBun(repoRoot: string, run: CommandRunner = defaultRun
     if (result.error) throw new Error(`cannot start bun test in ${packageDir}: ${result.error.message}`);
     const failed = failedTestCount(`${result.stdout}\n${result.stderr}`);
     if (failed > 0) throw new Error(`${failed} test(s) failed in ${packageDir}; coverage is not judged`);
+    // A run can exit non-zero without ever printing an "N fail" line — a module
+    // that fails to load, an unhandled error between tests, a killed process —
+    // and still leave an lcov behind. Reading that lcov would report a partial
+    // run as a coverage number, on the base side of the relative gate included.
+    if (result.status !== 0) {
+      throw new Error(
+        `bun test exited with status ${result.status} in ${packageDir}; coverage is not judged: ${describeFailure(result)}`,
+      );
+    }
     const lcovPath = join(coverageDir, "lcov.info");
     if (!existsSync(lcovPath)) throw new Error(`no lcov.info was written to ${lcovPath}: ${describeFailure(result)}`);
     const percent = parseLcovLinePercent(readFileSync(lcovPath, "utf-8"));
