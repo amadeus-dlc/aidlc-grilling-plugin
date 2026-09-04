@@ -12,6 +12,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   assertTagMatchesManifest,
+  defaultGitRunner,
+  main,
   release,
   type GitResult,
   type GitRunner,
@@ -168,5 +170,118 @@ describe("release tag consistency", () => {
     const { manifestPath: renamed } = fixture("1.2.3");
     writeFileSync(renamed, `${JSON.stringify({ name: "deep-spec-analysis", version: "1.2.3" })}\n`);
     expect(() => assertTagMatchesManifest("v1.2.3", renamed)).toThrow("plugin manifest name must be grilling");
+  });
+});
+
+describe("release git plumbing", () => {
+  test("defaultGitRunner maps a real git invocation, and a git that cannot start", () => {
+    const ok = defaultGitRunner(["--version"], process.cwd());
+    expect(ok.status).toBe(0);
+    expect(ok.stdout).toContain("git version");
+    expect(ok.error).toBeUndefined();
+
+    // spawnSync reports an unusable cwd through `error`, not a status.
+    const broken = defaultGitRunner(["--version"], join(tmpdir(), "grilling-release-no-such-dir"));
+    expect(broken.error).toBeDefined();
+  });
+
+  test("a git that cannot be started is reported rather than read as a result", () => {
+    const { repoRoot, manifestPath } = fixture();
+    const failed: GitResult = { status: null, stdout: "", stderr: "", error: new Error("spawn git ENOENT") };
+
+    const preflight = scriptedRunner({ "branch --show-current": failed });
+    expect(() => release("1.2.3", { repoRoot, manifestPath, runGit: preflight.runner })).toThrow("spawn git ENOENT");
+
+    const localTag = scriptedRunner({ "show-ref --verify --quiet refs/tags/v1.2.3": failed });
+    expect(() => release("1.2.3", { repoRoot, manifestPath, runGit: localTag.runner })).toThrow(
+      "cannot inspect local tag v1.2.3",
+    );
+
+    const remoteTag = scriptedRunner({ "ls-remote --exit-code --tags origin refs/tags/v1.2.3": failed });
+    expect(() => release("1.2.3", { repoRoot, manifestPath, runGit: remoteTag.runner })).toThrow(
+      "cannot inspect remote tag v1.2.3",
+    );
+  });
+
+  test("a tag probe that fails for any other reason is an error, not an absent tag", () => {
+    const { repoRoot, manifestPath } = fixture();
+
+    const local = scriptedRunner({
+      "show-ref --verify --quiet refs/tags/v1.2.3": result(128, "", "fatal: not a git repository"),
+    });
+    expect(() => release("1.2.3", { repoRoot, manifestPath, runGit: local.runner })).toThrow(
+      "cannot inspect local tag v1.2.3: fatal: not a git repository",
+    );
+
+    const remote = scriptedRunner({
+      "ls-remote --exit-code --tags origin refs/tags/v1.2.3": result(128, "", "fatal: no such remote"),
+    });
+    expect(() => release("1.2.3", { repoRoot, manifestPath, runGit: remote.runner })).toThrow(
+      "cannot inspect remote tag v1.2.3: fatal: no such remote",
+    );
+  });
+
+  test("a manifest that is not JSON is rejected by name, not by a parser stack trace", () => {
+    const { manifestPath } = fixture();
+    writeFileSync(manifestPath, "{ not json\n");
+    expect(() => assertTagMatchesManifest("v1.2.3", manifestPath)).toThrow("cannot read plugin manifest");
+  });
+});
+
+describe("release command line", () => {
+  function cli(argv: readonly string[], deps: Parameters<typeof main>[1] = {}) {
+    const out: string[] = [];
+    const err: string[] = [];
+    const code = main(argv, { log: (line) => out.push(line), error: (line) => err.push(line), ...deps });
+    return { code, out, err };
+  }
+
+  test("--check-tag verifies the tag against the manifest", () => {
+    const { manifestPath } = fixture("1.2.3");
+    const ok = cli(["--check-tag", "v1.2.3"], { manifestPath });
+    expect(ok.code).toBe(0);
+    expect(ok.out.join("\n")).toContain("matches the plugin manifest");
+
+    const bad = cli(["--check-tag", "v9.9.9"], { manifestPath });
+    expect(bad.code).toBe(1);
+    expect(bad.err.join("\n")).toContain("does not match plugin manifest version");
+  });
+
+  test("a bare version publishes it", () => {
+    const published: string[] = [];
+    const run = cli(["1.2.3"], { publish: (version) => published.push(version) });
+    expect(run.code).toBe(0);
+    expect(published).toEqual(["1.2.3"]);
+    expect(run.out.join("\n")).toContain("published v1.2.3");
+  });
+
+  test("a failing release is reported and exits non-zero", () => {
+    const run = cli(["1.2.3"], {
+      publish: () => {
+        throw new Error("release requires a clean working tree");
+      },
+    });
+    expect(run.code).toBe(1);
+    expect(run.err.join("\n")).toContain("release: release requires a clean working tree");
+  });
+
+  test("--help prints usage, and a malformed invocation prints it as an error", () => {
+    for (const flag of ["--help", "-h"]) {
+      const help = cli([flag]);
+      expect(help.code).toBe(0);
+      expect(help.out.join("\n")).toContain("Usage: bun grilling/scripts/release.ts");
+    }
+
+    for (const argv of [[], ["1.2.3", "extra"]]) {
+      const bad = cli(argv);
+      expect(bad.code).toBe(1);
+      expect(bad.err.join("\n")).toContain("Usage: bun grilling/scripts/release.ts");
+    }
+
+    // `--check-tag` without its tag reads as a one-argument release, and the
+    // version check rejects it before git is touched — non-zero either way.
+    const missingTag = cli(["--check-tag"]);
+    expect(missingTag.code).toBe(1);
+    expect(missingTag.err.join("\n")).toContain("stable Semantic Version");
   });
 });

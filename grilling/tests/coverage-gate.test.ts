@@ -20,7 +20,11 @@ import {
   type CommandRunner,
   TOLERANCE,
   checkoutBaseWorktree,
+  defaultRunner,
   failedTestCount,
+  type GateOptions,
+  type GateReport,
+  main,
   geWithTolerance,
   measureWithBun,
   parseArgs,
@@ -62,9 +66,9 @@ describe("coverage gate — lcov parsing", () => {
   });
 
   test("geWithTolerance treats equality and the tolerance band as a pass", () => {
-    expect(geWithTolerance(60, 60, 0)).toBe(true);
-    expect(geWithTolerance(59.995, 60, TOLERANCE)).toBe(true);
-    expect(geWithTolerance(59.98, 60, TOLERANCE)).toBe(false);
+    expect(geWithTolerance(ABSOLUTE_THRESHOLD, ABSOLUTE_THRESHOLD, 0)).toBe(true);
+    expect(geWithTolerance(ABSOLUTE_THRESHOLD - TOLERANCE / 2, ABSOLUTE_THRESHOLD, TOLERANCE)).toBe(true);
+    expect(geWithTolerance(ABSOLUTE_THRESHOLD - TOLERANCE * 2, ABSOLUTE_THRESHOLD, TOLERANCE)).toBe(false);
   });
 });
 
@@ -92,15 +96,18 @@ describe("coverage gate — decisions", () => {
     expect(failing.log.some((line) => line.startsWith("[FAIL] absolute gate"))).toBe(true);
   });
 
+  // Comfortably clear of the floor, so these exercise the relative gate alone.
+  const OVER = ABSOLUTE_THRESHOLD + 5;
+
   test("relative gate passes when head matches, exceeds, or sits within tolerance of base", () => {
-    expect(gate(70, 70).report.exitCode).toBe(0);
-    expect(gate(71, 70).report.exitCode).toBe(0);
-    expect(gate(70 - TOLERANCE / 2, 70).report.exitCode).toBe(0);
+    expect(gate(OVER, OVER).report.exitCode).toBe(0);
+    expect(gate(OVER + 1, OVER).report.exitCode).toBe(0);
+    expect(gate(OVER - TOLERANCE / 2, OVER).report.exitCode).toBe(0);
   });
 
   test("relative gate fails when head drops below base by more than the tolerance, and the worktree is always removed", () => {
-    const dropped = gate(69.9, 70);
-    expect(dropped.report).toEqual({ exitCode: 1, headPercent: 69.9, basePercent: 70 });
+    const dropped = gate(OVER - 0.1, OVER);
+    expect(dropped.report).toEqual({ exitCode: 1, headPercent: OVER - 0.1, basePercent: OVER });
     expect(dropped.log.some((line) => line.startsWith("[FAIL] relative gate"))).toBe(true);
     expect(dropped.removed).toEqual(["/tmp/base-worktree"]);
   });
@@ -119,7 +126,7 @@ describe("coverage gate — decisions", () => {
         baseRef: "origin/main",
         repoRoot: "/repo",
         measure: (root) => {
-          if (root === "/repo") return 70;
+          if (root === "/repo") return ABSOLUTE_THRESHOLD + 5;
           throw new Error("base tests failed");
         },
         checkoutBase: () => "/tmp/base-worktree",
@@ -343,5 +350,73 @@ describe("coverage gate — base worktree lifecycle", () => {
     const dropped = mkdtempSync(join(tmpdir(), "grilling-worktree-dropped-"));
     removeWorktree("/repo", dropped, () => ({ status: 1, stdout: "", stderr: "not a working tree" }));
     expect(existsSync(dropped)).toBe(false);
+  });
+});
+
+describe("coverage gate — command line", () => {
+  function cli(argv: readonly string[], gate?: (options: GateOptions) => GateReport) {
+    const out: string[] = [];
+    const err: string[] = [];
+    const code = main(argv, { log: (line) => out.push(line), error: (line) => err.push(line), gate });
+    return { code, out, err };
+  }
+
+  test("--help prints usage without measuring anything", () => {
+    let measured = false;
+    const help = cli(["--help"], () => {
+      measured = true;
+      return { exitCode: 0, headPercent: 100, basePercent: null };
+    });
+    expect(help.code).toBe(0);
+    expect(help.out.join("\n")).toContain("Usage: bun grilling/scripts/coverage.ts");
+    expect(help.out.join("\n")).toContain(`ABSOLUTE_THRESHOLD=${ABSOLUTE_THRESHOLD}`);
+    expect(measured).toBe(false);
+  });
+
+  test("the gate's exit code is the command's exit code, and --base is passed through", () => {
+    const seen: Array<string | undefined> = [];
+    const passing = cli([], (options) => {
+      seen.push(options.baseRef);
+      return { exitCode: 0, headPercent: 95, basePercent: null };
+    });
+    expect(passing.code).toBe(0);
+
+    const failing = cli(["--base", "origin/main"], (options) => {
+      seen.push(options.baseRef);
+      return { exitCode: 1, headPercent: 80, basePercent: 95 };
+    });
+    expect(failing.code).toBe(1);
+    expect(seen).toEqual([undefined, "origin/main"]);
+  });
+
+  test("a bad argument is reported and exits non-zero without measuring", () => {
+    let measured = false;
+    const bad = cli(["--nope"], () => {
+      measured = true;
+      return { exitCode: 0, headPercent: 100, basePercent: null };
+    });
+    expect(bad.code).toBe(1);
+    expect(bad.err.join("\n")).toContain("unknown argument");
+    expect(measured).toBe(false);
+  });
+
+  test("a measurement that throws is reported rather than crashing the command", () => {
+    const thrown = cli([], () => {
+      throw new Error("2 test(s) failed");
+    });
+    expect(thrown.code).toBe(1);
+    expect(thrown.err.join("\n")).toContain("error: 2 test(s) failed");
+  });
+});
+
+describe("coverage gate — the real spawn", () => {
+  test("defaultRunner maps a real invocation, and one that cannot start", () => {
+    const ok = defaultRunner("bun", ["--version"], process.cwd());
+    expect(ok.status).toBe(0);
+    expect(ok.stdout.trim()).not.toBe("");
+    expect(ok.error).toBeUndefined();
+
+    const broken = defaultRunner("bun", ["--version"], join(tmpdir(), "grilling-coverage-no-such-dir"));
+    expect(broken.error).toBeDefined();
   });
 });

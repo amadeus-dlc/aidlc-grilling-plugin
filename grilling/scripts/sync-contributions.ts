@@ -59,8 +59,8 @@ export const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const templatePath = join(pluginRoot, "tests", "fragment-template.md");
 export const contributionsDir = join(pluginRoot, "contributions");
 
-export function contributionPath(target: ContributionTarget): string {
-  return join(contributionsDir, target.phase, `${target.slug}.md`);
+export function contributionPath(target: ContributionTarget, dir: string = contributionsDir): string {
+  return join(dir, target.phase, `${target.slug}.md`);
 }
 
 export function renderContribution(target: ContributionTarget, template: string): string {
@@ -80,54 +80,81 @@ export function renderContribution(target: ContributionTarget, template: string)
   ].join("\n");
 }
 
-function existingContributionFiles(): string[] {
-  if (!existsSync(contributionsDir)) return [];
+function existingContributionFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
   const out: string[] = [];
-  for (const phase of readdirSync(contributionsDir)) {
-    const dir = join(contributionsDir, phase);
-    for (const file of readdirSync(dir)) {
-      if (file.endsWith(".md")) out.push(join(dir, file));
+  for (const phase of readdirSync(dir)) {
+    const phaseDir = join(dir, phase);
+    for (const file of readdirSync(phaseDir)) {
+      if (file.endsWith(".md")) out.push(join(phaseDir, file));
     }
   }
   return out.sort();
 }
 
-export function sync(options: { check: boolean }): { drift: string[] } {
-  const template = readFileSync(templatePath, "utf-8");
+/** Compare (and, unless `check`, rewrite) the generated contributions. `root`
+ *  points at a plugin directory — the real one by default, a sandbox copy in
+ *  tests, which is what lets the rewriting half be exercised without touching
+ *  the checkout. */
+export function sync(options: { check: boolean; root?: string }): { drift: string[] } {
+  const root = options.root ?? pluginRoot;
+  const template = readFileSync(join(root, "tests", "fragment-template.md"), "utf-8");
+  const dir = join(root, "contributions");
   const expected = new Map<string, string>();
-  for (const target of TARGETS) expected.set(contributionPath(target), renderContribution(target, template));
+  for (const target of TARGETS) expected.set(contributionPath(target, dir), renderContribution(target, template));
 
   const drift: string[] = [];
   for (const [path, content] of expected) {
     const current = existsSync(path) ? readFileSync(path, "utf-8") : null;
     if (current === content) continue;
-    drift.push(`${current === null ? "missing" : "changed"}: ${relative(pluginRoot, path)}`);
+    drift.push(`${current === null ? "missing" : "changed"}: ${relative(root, path)}`);
     if (!options.check) {
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, content);
     }
   }
-  for (const path of existingContributionFiles()) {
+  for (const path of existingContributionFiles(dir)) {
     if (expected.has(path)) continue;
-    drift.push(`extra: ${relative(pluginRoot, path)}`);
+    drift.push(`extra: ${relative(root, path)}`);
     if (!options.check) rmSync(path);
   }
   return { drift };
 }
 
-if (import.meta.main) {
-  const check = process.argv.includes("--check");
-  const { drift } = sync({ check });
+export interface MainDeps {
+  readonly log?: (line: string) => void;
+  readonly error?: (line: string) => void;
+  readonly root?: string;
+}
+
+/** The command line, as a function: run the sync, report, and return the exit
+ *  code. `import.meta.main` only forwards it to `process.exit`, so the drift
+ *  report a CI failure prints is reachable from a test as well. */
+export function main(argv: readonly string[], deps: MainDeps = {}): 0 | 1 {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const error = deps.error ?? ((line: string) => console.error(line));
+  const check = argv.includes("--check");
+  // sync reads the template and touches files; a failure there is the command's
+  // failure, reported like every other one rather than thrown past the caller.
+  let drift: string[];
+  try {
+    ({ drift } = sync({ check, root: deps.root }));
+  } catch (thrown) {
+    error(`sync-contributions: ${thrown instanceof Error ? thrown.message : String(thrown)}`);
+    return 1;
+  }
   if (check) {
     if (drift.length === 0) {
-      console.log(`sync-contributions: ${TARGETS.length} contributions match the template`);
-    } else {
-      console.error("sync-contributions: drift detected — run `bun scripts/sync-contributions.ts`");
-      for (const line of drift) console.error(`  ${line}`);
-      process.exit(1);
+      log(`sync-contributions: ${TARGETS.length} contributions match the template`);
+      return 0;
     }
-  } else {
-    console.log(`sync-contributions: ${TARGETS.length} contributions written (${drift.length} changed)`);
-    for (const line of drift) console.log(`  ${line}`);
+    error("sync-contributions: drift detected — run `bun scripts/sync-contributions.ts`");
+    for (const line of drift) error(`  ${line}`);
+    return 1;
   }
+  log(`sync-contributions: ${TARGETS.length} contributions written (${drift.length} changed)`);
+  for (const line of drift) log(`  ${line}`);
+  return 0;
 }
+
+if (import.meta.main) process.exit(main(process.argv.slice(2)));

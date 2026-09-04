@@ -64,7 +64,7 @@ jobs:
 
   # Line coverage gate (amadeus-dlc/amadeus-ng's coverage job, ported to Bun).
   # scripts/coverage.ts derives line coverage from the lcov `bun test --coverage`
-  # writes and judges an absolute gate (60% floor) plus, on pull_request, a
+  # writes and judges an absolute gate (90% floor) plus, on pull_request, a
   # relative gate against the base ref. What is measured, and what is excluded,
   # is bunfig.toml's business.
   coverage:
