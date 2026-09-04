@@ -20,7 +20,7 @@ rounds of independent questions, every question carries a recommended answer,
 the small decisions are yours to make and record, and the interview ends only
 when nothing is left silently assumed. Everything the protocol prescribes for
 Guide me applies unchanged — structured questions rendered per the annex, the
-§3 `aidlc-log.ts decision` / `answer` pair around every non-gate screen,
+§3 decision / answer logging pair around every non-gate screen,
 Question interaction log entries with fresh timestamps, and the questions file
 as the source of truth. Only the following differs.
 
@@ -80,8 +80,8 @@ reasoning, and a blank `[Answer]:` tag. Write each answer back as soon as it
 arrives — the chosen option letter (or the free text for Other) in the
 `[Answer]:` tag and `**Mode:** grill` on its own line directly beneath it,
 never inside the answer value — before presenting the next screen. Record the
-§3 `aidlc-log.ts decision` / `answer` pair for every screen you present, each
-with a fresh timestamp.
+§3 decision / answer logging pair for every screen you present, each with a
+fresh timestamp, exactly as the protocol prescribes for Guide me.
 
 **Rendering.** On Claude Code, put the recommended option **first** and mark
 it in the option's **label** — the short heading the user reads first, e.g.
