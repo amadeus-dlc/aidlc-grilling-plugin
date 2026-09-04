@@ -1,6 +1,6 @@
 {
   "name": "grilling",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Adds a fourth \"Grill me\" interaction mode to the AI-DLC question flow: the orchestrator interviews you in rounds of independent questions, each with a recommended answer, decides the small things itself as recorded assumptions, and drills into every branch until you share the same understanding. Contributions only — no new stages, agents, scopes, or sensors.",
   "author": {
     "name": "j5ik2o"
