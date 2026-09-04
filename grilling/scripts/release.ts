@@ -38,7 +38,9 @@ export interface ReleaseOptions {
   readonly runGit?: GitRunner;
 }
 
-function defaultGitRunner(args: readonly string[], cwd: string): GitResult {
+/** The real spawn. Exported so its mapping of spawnSync's result — including a
+ *  git that cannot be started — is covered without a subprocess in the way. */
+export function defaultGitRunner(args: readonly string[], cwd: string): GitResult {
   const result = spawnSync("git", args, { cwd, encoding: "utf-8" });
   return {
     status: result.status,
@@ -141,24 +143,41 @@ export function release(version: string, options: ReleaseOptions = {}): void {
   runRequiredGit(runGit, repoRoot, ["push", "--atomic", "origin", "main", tag]);
 }
 
-if (import.meta.main) {
+export interface MainDeps {
+  readonly log?: (line: string) => void;
+  readonly error?: (line: string) => void;
+  readonly manifestPath?: string;
+  readonly checkTag?: (tag: string, manifestPath: string) => void;
+  readonly publish?: (version: string) => void;
+}
+
+/** The command line, as a function: dispatch, print, and return the exit code.
+ *  `import.meta.main` only forwards it to `process.exit`, so every branch a
+ *  user can reach — the tag check, a release, help, a malformed invocation —
+ *  is reachable from a test as well, with the two effectful calls injected. */
+export function main(argv: readonly string[], deps: MainDeps = {}): 0 | 1 {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const fail = deps.error ?? ((line: string) => console.error(line));
+  const manifestPath = deps.manifestPath ?? resolve(import.meta.dir, "../.aidlc-plugin/plugin.json");
+  const checkTag = deps.checkTag ?? assertTagMatchesManifest;
+  const publish = deps.publish ?? ((version: string) => release(version));
   try {
-    const args = process.argv.slice(2);
-    if (args[0] === "--check-tag" && args.length === 2) {
-      assertTagMatchesManifest(args[1], resolve(import.meta.dir, "../.aidlc-plugin/plugin.json"));
-      console.log(`release: ${args[1]} matches the plugin manifest`);
-    } else if (args.length === 1 && args[0] !== "--help" && args[0] !== "-h") {
-      release(args[0]);
-      console.log(`release: published v${args[0]}`);
+    if (argv[0] === "--check-tag" && argv.length === 2) {
+      checkTag(argv[1] as string, manifestPath);
+      log(`release: ${argv[1]} matches the plugin manifest`);
+    } else if (argv.length === 1 && argv[0] !== "--help" && argv[0] !== "-h") {
+      publish(argv[0] as string);
+      log(`release: published v${argv[0]}`);
+    } else if (argv.length > 0 && (argv[0] === "--help" || argv[0] === "-h")) {
+      log(`${USAGE}\n       bun grilling/scripts/release.ts --check-tag <tag>`);
     } else {
-      if (args.length > 0 && (args[0] === "--help" || args[0] === "-h")) {
-        console.log(`${USAGE}\n       bun grilling/scripts/release.ts --check-tag <tag>`);
-      } else {
-        throw new Error(USAGE);
-      }
+      throw new Error(USAGE);
     }
-  } catch (error) {
-    console.error(`release: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    return 0;
+  } catch (thrown) {
+    fail(`release: ${thrown instanceof Error ? thrown.message : String(thrown)}`);
+    return 1;
   }
 }
+
+if (import.meta.main) process.exit(main(process.argv.slice(2)));

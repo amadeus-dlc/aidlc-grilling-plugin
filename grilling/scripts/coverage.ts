@@ -38,7 +38,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 // --- thresholds (stated once, here) ------------------------------------------
-export const ABSOLUTE_THRESHOLD = 60.0;
+export const ABSOLUTE_THRESHOLD = 90.0;
 export const TOLERANCE = 0.01;
 // -----------------------------------------------------------------------------
 
@@ -89,7 +89,9 @@ export interface GateReport {
   readonly basePercent: number | null;
 }
 
-function defaultRunner(command: string, args: readonly string[], cwd: string): CommandResult {
+/** The real spawn. Exported so its mapping of spawnSync's result — including a
+ *  binary that does not exist — is covered without a subprocess in the way. */
+export function defaultRunner(command: string, args: readonly string[], cwd: string): CommandResult {
   const result = spawnSync(command, args, { cwd, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
   return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "", error: result.error };
 }
@@ -273,16 +275,31 @@ export function parseArgs(args: readonly string[]): { baseRef?: string; help: bo
   return { baseRef, help };
 }
 
-if (import.meta.main) {
+export interface MainDeps {
+  readonly log?: (line: string) => void;
+  readonly error?: (line: string) => void;
+  readonly gate?: (options: GateOptions) => GateReport;
+}
+
+/** The command line, as a function: parse, print, and return the exit code.
+ *  `import.meta.main` only forwards it to `process.exit`, so every branch a
+ *  user can reach — help, a bad argument, a passing gate, a failing one — is
+ *  reachable from a test as well. */
+export function main(argv: readonly string[], deps: MainDeps = {}): 0 | 1 {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const error = deps.error ?? ((line: string) => console.error(line));
+  const gate = deps.gate ?? runGate;
   try {
-    const parsed = parseArgs(process.argv.slice(2));
+    const parsed = parseArgs(argv);
     if (parsed.help) {
-      console.log(USAGE);
-    } else {
-      process.exit(runGate({ baseRef: parsed.baseRef }).exitCode);
+      log(USAGE);
+      return 0;
     }
-  } catch (error) {
-    console.error(`error: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    return gate({ baseRef: parsed.baseRef }).exitCode;
+  } catch (thrown) {
+    error(`error: ${thrown instanceof Error ? thrown.message : String(thrown)}`);
+    return 1;
   }
 }
+
+if (import.meta.main) process.exit(main(process.argv.slice(2)));
