@@ -1,0 +1,12 @@
+[
+  {
+    "uuid": "01a06ad8-dc11-714f-a2c3-e98fa8c4c2f9",
+    "slug": "plugin-plan",
+    "dirName": "260904-plugin-plan",
+    "scope": "plugin-dev",
+    "repos": [
+      "aidlc-workflows"
+    ],
+    "status": "complete"
+  }
+]
