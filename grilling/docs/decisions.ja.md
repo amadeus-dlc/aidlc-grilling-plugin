@@ -28,11 +28,12 @@
 - **決定** — 手で編集する本文は `tests/fragment-template.md` だけ。`scripts/sync-contributions.ts` がテンプレートとアンカー表から 28 本を描画し（frontmatter の `target` / `plugin` / `anchor` / `order`、`## fragment:` 見出し、テンプレート本文）、`--check` は差分があれば非ゼロで終了してファイル名を出す。`--check` は CI とテストスイートの両方で走る。`plugin.test.ts` は各 contribution がそのターゲット向けに描画したテンプレートと一致すること、テンプレートの固定トークンが揃っていることを検査する。
 - **帰結** — contribution を直接編集しても次の sync で戻され、drift テストが落ちる。テンプレートそのものは配布されず、描画した写しだけが配布される。
 
-## 5. 検証は当面 Claude Code に限定する
+## 5. ライブ確認は Claude Code のみ。同梱ゲートは Claude と Codex を通す
 
-- **背景** — 計画書の検証手順は 7 ハーネスでの `aidlc-plugin-test.ts --install` と、Claude Code＋番号付きプローズ系ハーネス 1 つ（Kiro CLI か Codex）でのライブ確認を求めていた。意図の成功指標 2 も同じ。要求整理で、オーナーはどちらも「Claude だけでいい。一旦。あとから残りは考える」と決めた（0.2.0 ワークフローの Q1・Q2）。
-- **決定** — 自動の合成検証は 7 ハーネスの build、Claude と Kiro の install への compose、Claude での同梱ゲート `aidlc-plugin-test.ts --install` まで。ライブ確認は Claude Code のみで、Claude Agent SDK 経由の `bun run test:live` と、2026-09-03 の headless 実行（print モードには `AskUserQuestion` が無いため番号付きプローズで描画され、その経路の確認を兼ねた）。残り 6 ハーネスの `--install` ゲートと、番号付きプローズ系ハーネスでの実機ライブ確認は、計画書の完了記録に今後の課題として残す。意図の成功指標 2 は要求で上書きした。
-- **帰結** — 断片の番号付きプローズの規則（❓ / ➡️ / `---` の書式、Other が 5 行目）は print モードの記録でしか確認しておらず、番号付きプローズのホストそのものでは未確認。
+- **背景** — 計画書の検証手順は 7 ハーネスでの `aidlc-plugin-test.ts --install` と、Claude Code＋番号付きプローズ系ハーネス 1 つ（Kiro CLI か Codex）でのライブ確認を求めていた。意図の成功指標 2 も同じ。要求整理で、オーナーはどちらも「Claude だけでいい。一旦。あとから残りは考える」と決めた（0.2.0 ワークフローの Q1・Q2）。2026-09-05 に Claude と Codex の両方でサンドボックス検証をするよう指示があり、同梱ゲートは 2 つ目のハーネスに到達した。
+- **決定** — 自動の合成検証は 7 ハーネスの build、Claude と Kiro の install への compose、**Claude と Codex** での同梱ゲート `aidlc-plugin-test.ts --install` まで。ライブ確認は Claude Code のみで、Claude Agent SDK 経由の `bun run test:live` と、2026-09-03 の headless 実行（print モードには `AskUserQuestion` が無いため番号付きプローズで描画され、その経路の確認を兼ねた）。残り 5 ハーネスの `--install` ゲートと、番号付きプローズ系ハーネスでの実機ライブ確認は、計画書の完了記録に今後の課題として残す。意図の成功指標 2 は要求で上書きした。
+- **Codex のサンドボックス検証（2026-09-05）** — 両サンドボックスを `aidlc-workflows` v2.7.0-1-ga277af21 の `dist/<harness>` から作り直し、`install.ts --project ../grilling-sandbox-<harness> --from . --harness <harness>` で導入した。どちらも 1 回目 `Changed 1`・2 回目 `Changed 0`、対象 28 ステージすべてに sentinel、ゲートは `CLEAN` / `Drops: 0` / `Idempotent second compose: true`、doctor は Claude 50 件・Codex 44 件がすべて合格。断片の着弾はバイト同一で、`requirements-analysis.md` では `### Step 6` と `### Step 7` の間の同じ行に、同じ内容ハッシュで入る。Codex は Claude と同じ store ハーネスなので、どちらもプロジェクトへは何も複製されない。
+- **帰結** — 断片の番号付きプローズの規則（❓ / ➡️ / `---` の書式、Other が 5 行目）は print モードの記録でしか確認しておらず、番号付きプローズのホストそのものでは未確認。あわせて、Codex の install は compose のたびに advisory の drop を 1 件記録する — `runner regeneration skipped: .codex/skills not present in this install`。`.codex/` に `skills/` が無いためで、**contribution が落ちたわけではない**（ゲートは `Drops: 0`、28 件すべて着弾。contributions-only のプラグインはランナーを要するステージを配布しない）。ただし doctor はこれを「a hook swallowed a failure and fail-opened」と表示するので、Codex の install には毎回、直すのではなく説明を要する advisory が 1 件残る。
 
 ## 6. deep-spec-analysis との同等を上限とし、それ以上は作らない
 
